@@ -3,24 +3,40 @@ package com.shinchven.simplecamera.app;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.Format;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 
-public class CameraActivity extends AppCompatActivity {
+public class CameraActivity extends AppCompatActivity implements View.OnClickListener {
 
+    private static final String TAG = "camera_activity";
     private Camera mCamera;
     private FrameLayout mCameraPreviewContainer;
     private CameraPreview mCameraPreview;
     private DisplayUtil.DisplayMatrix mScreenDisplayMatrix;
     private Camera.Size mOptimalPreviewSize;
+    private MediaRecorder mMediaRecorder;
+    private Button mRecordBtn;
+    private boolean isRecording = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,7 +47,8 @@ public class CameraActivity extends AppCompatActivity {
             finish();
             return;
         }
-
+        mRecordBtn = ((Button) findViewById(R.id.record));
+        mRecordBtn.setOnClickListener(this);
         mScreenDisplayMatrix = DisplayUtil.getScreenDisplayMatrix(this);
         mCameraPreviewContainer = ((FrameLayout) findViewById(R.id.camera_preview_container));
     }
@@ -47,6 +64,7 @@ public class CameraActivity extends AppCompatActivity {
         super.onStart();
         if (mCamera == null) {
             mCamera = getCameraInstance();
+
 
             ViewGroup.LayoutParams layoutParams = mCameraPreviewContainer.getLayoutParams();
             //Camera.Size pictureSize = mCamera.getParameters().getPictureSize();
@@ -67,6 +85,117 @@ public class CameraActivity extends AppCompatActivity {
             mCameraPreviewContainer.addView(mCameraPreview);
 
         }
+
+
+    }
+
+    private boolean prepareVideoRecorderAndDisplay() {
+        if (mCamera != null) {
+            mMediaRecorder = new MediaRecorder();
+
+            // Step 1: Unlock and set camera to MediaRecorder
+            mCamera.unlock();
+            mMediaRecorder.setCamera(mCamera);
+
+            // Step 2: Set sources
+            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+
+            // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
+            mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_480P));
+            //mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
+        //    mMediaRecorder.setVideoSize(480,640);
+            mMediaRecorder.setVideoFrameRate(10);
+            mMediaRecorder.setVideoEncodingBitRate(128 * 8 * 1024);
+            mMediaRecorder.setAudioEncodingBitRate(5 * 8 * 1024);
+            mMediaRecorder.setOrientationHint(90);
+            // Step 4: Set output file
+            String path = getOutputMediaFile(MEDIA_TYPE_VIDEO).toString();
+            LogUtil.i("video_path", path);
+            mMediaRecorder.setOutputFile(path);
+
+//            // Step 5: Set the preview output
+            mMediaRecorder.setPreviewDisplay(mCameraPreview.getHolder().getSurface());
+
+            // Step 6: Prepare configured MediaRecorder
+            try {
+                mMediaRecorder.prepare();
+                return true;
+            } catch (IllegalStateException e) {
+                Log.d(TAG, "IllegalStateException preparing MediaRecorder: " + e.getMessage());
+                releaseMediaRecorder();
+                return false;
+            } catch (IOException e) {
+                Log.d(TAG, "IOException preparing MediaRecorder: " + e.getMessage());
+                releaseMediaRecorder();
+                return false;
+            }
+
+
+        }
+        return false;
+    }
+
+    private void releaseMediaRecorder() {
+        if (mMediaRecorder != null) {
+            mMediaRecorder.reset();   // clear recorder configuration
+            mMediaRecorder.release(); // release the recorder object
+            mMediaRecorder = null;
+            mCamera.lock();           // lock camera for later use
+        }
+    }
+
+    private void releaseCamera() {
+        if (mCamera != null) {
+            mCamera.release();        // release the camera for other applications
+            mCamera = null;
+        }
+    }
+
+    public static final int MEDIA_TYPE_IMAGE = 1;
+    public static final int MEDIA_TYPE_VIDEO = 2;
+
+    /**
+     * Create a file Uri for saving an image or video
+     */
+    private static Uri getOutputMediaFileUri(int type) {
+        return Uri.fromFile(getOutputMediaFile(type));
+    }
+
+    /**
+     * Create a File for saving an image or video
+     */
+    private static File getOutputMediaFile(int type) {
+        // To be safe, you should check that the SDCard is mounted
+        // using Environment.getExternalStorageState() before doing this.
+
+        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES), "MyCameraApp");
+        // This location works best if you want the created images to be shared
+        // between applications and persist after your app has been uninstalled.
+
+        // Create the storage directory if it does not exist
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                Log.d("MyCameraApp", "failed to create directory");
+                return null;
+            }
+        }
+
+        // Create a media file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File mediaFile;
+        if (type == MEDIA_TYPE_IMAGE) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "IMG_" + timeStamp + ".jpg");
+        } else if (type == MEDIA_TYPE_VIDEO) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "VID_" + timeStamp + ".mp4");
+        } else {
+            return null;
+        }
+
+        return mediaFile;
     }
 
     private Camera.Size getOptimalPreviewSize(List<Camera.Size> sizes, int w, int h) {
@@ -117,7 +246,7 @@ public class CameraActivity extends AppCompatActivity {
         try {
             c = Camera.open(); // attempt to get a Camera instance
             Camera.Parameters parameters = c.getParameters();
-            mOptimalPreviewSize = getOptimalPreviewSize(parameters.getSupportedVideoSizes(), 720, 720);
+            mOptimalPreviewSize = getOptimalPreviewSize(parameters.getSupportedVideoSizes(), 480, 640);
             parameters.setPreviewSize(mOptimalPreviewSize.width, mOptimalPreviewSize.height);
             c.setParameters(parameters);
             c.setDisplayOrientation(90);
@@ -157,5 +286,45 @@ public class CameraActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * Called when a view has been clicked.
+     *
+     * @param v The view that was clicked.
+     */
+    @Override
+    public void onClick(View v) {
+        int id = v.getId();
+        if (id == R.id.record) {
+            if (isRecording) {
+                // stop recording and release camera
+                mMediaRecorder.stop();  // stop the recording
+                releaseMediaRecorder(); // release the MediaRecorder object
+                mCamera.lock();         // take camera access back from MediaRecorder
+                mRecordBtn.setText("record");
+                // inform the user that recording has stopped
+                //setCaptureButtonText("Capture");
+                isRecording = false;
+            } else {
+                // initialize video camera
+                if (prepareVideoRecorderAndDisplay()) {
+                    // Camera is available and unlocked, MediaRecorder is prepared,
+                    // now you can start recording
+                    mMediaRecorder.start();
+                    mRecordBtn.setText("stop");
+                    // inform the user that recording has started
+                    //setCaptureButtonText("Stop");
+                    isRecording = true;
+                } else {
+                    // prepare didn't work, release the camera
+                    releaseMediaRecorder();
+                    // inform user
+                }
+            }
+            LogUtil.i("record", "is recording:" + isRecording);
+        }
+
+
     }
 }
