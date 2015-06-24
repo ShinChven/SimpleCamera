@@ -8,6 +8,7 @@ import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -20,7 +21,7 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.Format;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -60,6 +61,13 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        releaseCamera();
+        releaseMediaRecorder();
+    }
+
+    @Override
     protected void onStart() {
         super.onStart();
         if (mCamera == null) {
@@ -86,8 +94,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
 
         }
 
-
     }
+
 
     private boolean prepareVideoRecorderAndDisplay() {
         if (mCamera != null) {
@@ -97,19 +105,30 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
             mCamera.unlock();
             mMediaRecorder.setCamera(mCamera);
 
-            // Step 2: Set sources
-            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
-            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
 
-            // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
-            mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_480P));
-            //mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
-        //    mMediaRecorder.setVideoSize(480,640);
-            mMediaRecorder.setVideoFrameRate(10);
-            mMediaRecorder.setVideoEncodingBitRate(128 * 8 * 1024);
-            mMediaRecorder.setAudioEncodingBitRate(5 * 8 * 1024);
+            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.DEFAULT);
+            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            mMediaRecorder.setVideoSize(640,480);
+            mMediaRecorder.setVideoFrameRate(30);
+            mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
+            mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+
+//            // Step 2: Set sources
+//            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+//            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+//
+//
+//            // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
+//            mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
+//            //mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
+//            //    mMediaRecorder.setVideoSize(480,640);
+//            // mMediaRecorder.setVideoFrameRate(10);
+            mMediaRecorder.setVideoEncodingBitRate(256 * 8 * 1024);
+            mMediaRecorder.setAudioEncodingBitRate(96 * 8 * 1024);
             mMediaRecorder.setOrientationHint(90);
-            // Step 4: Set output file
+//            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.WEBM);
+//            // Step 4: Set output file
             String path = getOutputMediaFile(MEDIA_TYPE_VIDEO).toString();
             LogUtil.i("video_path", path);
             mMediaRecorder.setOutputFile(path);
@@ -231,13 +250,6 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         return optimalSize;
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        mCamera.release();
-        mCamera = null;
-    }
-
     /**
      * A safe way to get an instance of the Camera object.
      */
@@ -288,6 +300,9 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         return super.onOptionsItemSelected(item);
     }
 
+    Handler mHandler = new Handler();
+
+
     /**
      * Called when a view has been clicked.
      *
@@ -298,24 +313,32 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         int id = v.getId();
         if (id == R.id.record) {
             if (isRecording) {
-                // stop recording and release camera
-                mMediaRecorder.stop();  // stop the recording
-                releaseMediaRecorder(); // release the MediaRecorder object
-                mCamera.lock();         // take camera access back from MediaRecorder
-                mRecordBtn.setText("record");
-                // inform the user that recording has stopped
-                //setCaptureButtonText("Capture");
-                isRecording = false;
+                stopRecording();
             } else {
                 // initialize video camera
                 if (prepareVideoRecorderAndDisplay()) {
                     // Camera is available and unlocked, MediaRecorder is prepared,
                     // now you can start recording
-                    mMediaRecorder.start();
-                    mRecordBtn.setText("stop");
-                    // inform the user that recording has started
-                    //setCaptureButtonText("Stop");
-                    isRecording = true;
+                    try {
+                        mMediaRecorder.start();
+                        mRecordBtn.setText("stop");
+                        // inform the user that recording has started
+                        //setCaptureButtonText("Stop");
+
+                        isRecording = true;
+                    } catch (Exception e) {
+                        Toast.makeText(this, "暂时不支持您的手机摄像头", Toast.LENGTH_SHORT).show();
+                        LogUtil.printStackTrace(e);
+                    }
+
+                    mHandler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isRecording) {
+                                stopRecording();
+                            }
+                        }
+                    }, 6 * 1000);
                 } else {
                     // prepare didn't work, release the camera
                     releaseMediaRecorder();
@@ -326,5 +349,16 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         }
 
 
+    }
+
+    private void stopRecording() {
+        // stop recording and release camera
+        mMediaRecorder.stop();  // stop the recording
+        releaseMediaRecorder(); // release the MediaRecorder object
+        mCamera.lock();         // take camera access back from MediaRecorder
+        mRecordBtn.setText("record");
+        // inform the user that recording has stopped
+        //setCaptureButtonText("Capture");
+        isRecording = false;
     }
 }
