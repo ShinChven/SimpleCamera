@@ -3,20 +3,25 @@ package com.shinchven.simplecamera.app;
 import android.annotation.TargetApi;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.WindowManager;
+import android.view.*;
+import android.widget.Toast;
 import android.widget.VideoView;
+import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
 
 import java.net.URI;
 
 
 public class VideoViewActivity extends ActionBarActivity {
 
+    public static final String KEY_PATH = "key_path";
     private VideoView mVideoView;
 
     @Override
@@ -30,7 +35,10 @@ public class VideoViewActivity extends ActionBarActivity {
         setContentView(R.layout.activity_video_view);
         getSupportActionBar().hide();
         mVideoView = ((VideoView) findViewById(R.id.video));
-        mVideoView.setVideoURI(Uri.parse(Storage.getOutputMediaFile().getAbsolutePath()));
+        String path = getIntent().getStringExtra(KEY_PATH);
+
+
+        mVideoView.setVideoURI(Uri.parse(path));
         mVideoView.requestFocus();
 
 
@@ -44,6 +52,7 @@ public class VideoViewActivity extends ActionBarActivity {
             }
         });
     }
+
 
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)

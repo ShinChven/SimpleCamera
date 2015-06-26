@@ -124,8 +124,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
 //            //mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
 ////            //    mMediaRecorder.setVideoSize(480,640);
 ////            // mMediaRecorder.setVideoFrameRate(10);
-                mMediaRecorder.setVideoEncodingBitRate(128 * 8 * 1024);
-                mMediaRecorder.setAudioEncodingBitRate(1 * 8 * 1024);
+             //   mMediaRecorder.setVideoEncodingBitRate(128 * 8 * 1024);
+               // mMediaRecorder.setAudioEncodingBitRate(1 * 8 * 1024);
                 // mMediaRecorder.setMaxFileSize(1*1024*1024);
                 mMediaRecorder.setOrientationHint(90);
 //            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.WEBM);
