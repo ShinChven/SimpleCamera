@@ -1,7 +1,8 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 xmlns:tools="http://schemas.android.com/tools"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+              android:orientation="vertical"
                 android:paddingLeft="@dimen/activity_horizontal_margin"
                 android:paddingRight="@dimen/activity_horizontal_margin"
                 android:paddingTop="@dimen/activity_vertical_margin"
@@ -21,8 +22,15 @@
     <Button
 
             android:id="@+id/btn_open_camera_activity"
-            android:text="@string/hello_world"
+            android:text="camera"
             android:layout_width="match_parent"
             android:layout_height="50dp"/>
 
-</RelativeLayout>
+    <Button
+
+            android:id="@+id/btn_open_video_view_activity"
+            android:text="video"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"/>
+
+</LinearLayout>

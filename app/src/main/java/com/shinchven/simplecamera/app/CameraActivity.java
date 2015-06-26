@@ -1,6 +1,7 @@
 package com.shinchven.simplecamera.app;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
@@ -21,7 +22,6 @@ import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -102,39 +102,43 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
             mMediaRecorder = new MediaRecorder();
 
             // Step 1: Unlock and set camera to MediaRecorder
-            mCamera.unlock();
-            mMediaRecorder.setCamera(mCamera);
+            try {
+                mCamera.unlock();
+                mMediaRecorder.setCamera(mCamera);
 
-
-            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
-            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.DEFAULT);
-            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            mMediaRecorder.setVideoSize(640,480);
-            mMediaRecorder.setVideoFrameRate(30);
-            mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
-            mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+//                mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+//                mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+//                mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+//                mMediaRecorder.setVideoSize(1280,720);
+//                mMediaRecorder.setVideoFrameRate(30);
+//                mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
+//                mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
 
 //            // Step 2: Set sources
-//            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
-//            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-//
+                mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+                mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+
 //
 //            // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
-//            mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
+                mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
 //            //mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
-//            //    mMediaRecorder.setVideoSize(480,640);
-//            // mMediaRecorder.setVideoFrameRate(10);
-            mMediaRecorder.setVideoEncodingBitRate(256 * 8 * 1024);
-            mMediaRecorder.setAudioEncodingBitRate(96 * 8 * 1024);
-            mMediaRecorder.setOrientationHint(90);
+////            //    mMediaRecorder.setVideoSize(480,640);
+////            // mMediaRecorder.setVideoFrameRate(10);
+                mMediaRecorder.setVideoEncodingBitRate(128 * 8 * 1024);
+                mMediaRecorder.setAudioEncodingBitRate(1 * 8 * 1024);
+                // mMediaRecorder.setMaxFileSize(1*1024*1024);
+                mMediaRecorder.setOrientationHint(90);
 //            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.WEBM);
 //            // Step 4: Set output file
-            String path = getOutputMediaFile(MEDIA_TYPE_VIDEO).toString();
-            LogUtil.i("video_path", path);
-            mMediaRecorder.setOutputFile(path);
+                String path = getOutputMediaFile(MEDIA_TYPE_VIDEO).toString();
+                LogUtil.i("video_path", path);
+                mMediaRecorder.setOutputFile(Storage.getOutputMediaFile().getAbsolutePath());
 
 //            // Step 5: Set the preview output
-            mMediaRecorder.setPreviewDisplay(mCameraPreview.getHolder().getSurface());
+                mMediaRecorder.setPreviewDisplay(mCameraPreview.getHolder().getSurface());
+            } catch (IllegalStateException e) {
+                LogUtil.printStackTrace(e);
+            }
 
             // Step 6: Prepare configured MediaRecorder
             try {
@@ -258,6 +262,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         try {
             c = Camera.open(); // attempt to get a Camera instance
             Camera.Parameters parameters = c.getParameters();
+            parameters.set("orientation", "portrait");
             mOptimalPreviewSize = getOptimalPreviewSize(parameters.getSupportedVideoSizes(), 480, 640);
             parameters.setPreviewSize(mOptimalPreviewSize.width, mOptimalPreviewSize.height);
             c.setParameters(parameters);
@@ -313,7 +318,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         int id = v.getId();
         if (id == R.id.record) {
             if (isRecording) {
-                stopRecording();
+                // stopRecording();
             } else {
                 // initialize video camera
                 if (prepareVideoRecorderAndDisplay()) {
@@ -338,7 +343,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
                                 stopRecording();
                             }
                         }
-                    }, 6 * 1000);
+                    }, 8 * 1000);
                 } else {
                     // prepare didn't work, release the camera
                     releaseMediaRecorder();
@@ -360,5 +365,11 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         // inform the user that recording has stopped
         //setCaptureButtonText("Capture");
         isRecording = false;
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                startActivity(new Intent(CameraActivity.this, VideoViewActivity.class));
+            }
+        }, 1000);
     }
 }

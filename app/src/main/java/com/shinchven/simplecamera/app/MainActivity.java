@@ -14,12 +14,15 @@ import android.widget.TextView;
 public class MainActivity extends ActionBarActivity implements View.OnClickListener {
 
     private Button mBtnOpenCameraActivity;
+    private Button mBtnOpenVideoViewActivity;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mBtnOpenCameraActivity = ((Button) findViewById(R.id.btn_open_camera_activity));
+        mBtnOpenVideoViewActivity = (Button) findViewById(R.id.btn_open_video_view_activity);
+        mBtnOpenVideoViewActivity.setOnClickListener(this);
         mBtnOpenCameraActivity.setOnClickListener(this);
         ((TextView) findViewById(R.id.text)).setShadowLayer(4, 5, 5, Color.BLACK);
     }
@@ -57,6 +60,8 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
         int id = v.getId();
         if (id == R.id.btn_open_camera_activity) {
             startActivity(new Intent(this, CameraActivity.class));
+        }else if (id == R.id.btn_open_video_view_activity){
+            startActivity(new Intent(this, VideoViewActivity.class));
         }
     }
 }
