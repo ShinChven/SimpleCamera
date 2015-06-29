@@ -159,7 +159,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
                         " -strict -2 -codec:v mpeg4 -b:v 512k -b:a 96k -aspect 3:4 -vf crop=" +
                         cropHeight + ":" + cropWidth + ":" + top + ":" + 0 + ",scale=640:480 "
                         + Storage.getOutputCompressedMediaFile().getAbsolutePath();
-                ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
+                ffmpeg.execute(cmd.split(" "), new ExecuteBinaryResponseHandler() {
 
                     @Override
                     public void onStart() {

@@ -24,6 +24,10 @@ android {
         versionName "1.0"
     }
 
+    aaptOptions {
+        ignoreAssetsPattern "x86/ffmpeg"
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
         targetCompatibility JavaVersion.VERSION_1_7
@@ -41,5 +45,9 @@ dependencies {
     compile 'com.android.support:support-v4:22.2.0'
     compile 'com.android.support:gridlayout-v7:22.2.0'
     compile 'com.android.support:appcompat-v7:22.2.0'
-    compile 'com.github.hiteshsondhi88.libffmpeg:FFmpegAndroid:0.2.5'
+    //compile ('com.github.hiteshsondhi88.libffmpeg:FFmpegAndroid:0.2.5')
+    compile project(':FFmpegAndroid')
+
+
+
 }
