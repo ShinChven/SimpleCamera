@@ -65,10 +65,17 @@ public class MainActivity extends ActionBarActivity implements View.OnClickListe
             }
 
 
+            DisplayUtil.DisplayMatrix matrix = DisplayUtil.getScreenDisplayMatrix(MainActivity.this);
+            int cropWidth = matrix.width;
+            int cropHeight = matrix.width / 4 * 3;
+            int top = (matrix.height - cropHeight) / 2;
+
             try {
                 // to execute "ffmpeg -version" command you just need to pass "-version"
 //                String cmd = "ffmpeg -i " + Storage.getOutputMediaFile() + " -vcodec libx264 -crf 20 " + Storage.getOutputCompressedMediaFile();
-                String cmd = "-i " + Storage.getOutputMediaFile().getAbsolutePath() + " -strict -2 -codec:v mpeg4 -b:v 512k -aspect 16:9 -vf scale=640:480 " + Storage.getOutputCompressedMediaFile().getAbsolutePath();
+                String cmd = "-i " + Storage.getOutputMediaFile().getAbsolutePath() +
+                        " -strict -2 -codec:v mpeg4 -b:v 512k -aspect 3:4 -vf crop=" + cropHeight + ":" + cropWidth + ":" + top + ":" + 0 + ",scale=640:480 "
+                        + Storage.getOutputCompressedMediaFile().getAbsolutePath();
                 ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
 
                     @Override
