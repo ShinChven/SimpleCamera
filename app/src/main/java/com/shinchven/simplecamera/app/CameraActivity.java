@@ -113,8 +113,15 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         protected void onPreExecute() {
             super.onPreExecute();
             mDialog = new ProgressDialog(CameraActivity.this);
+            mDialog.setCancelable(false);
+            mDialog.setMessage("正在转码");
             try {
-                mDialog.show();
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mDialog.show();
+                    }
+                });
             } catch (Exception e) {
                 LogUtil.printStackTrace(e);
             }
@@ -138,11 +145,7 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
 
             DisplayUtil.DisplayMatrix matrix = DisplayUtil.getScreenDisplayMatrix(CameraActivity.this);
 
-            int cropWidth2 = matrix.width;
-            int cropHeight2 = matrix.width / 4 * 3;
-            int top2 = (matrix.height - cropHeight2) / 2;
-
-            Camera.Size bestRecordSize = getOptimalPreviewSize(mCamera.getParameters().getSupportedVideoSizes(), 10000, 10000);
+            Camera.Size bestRecordSize = getOptimalPreviewSize(mCamera.getParameters().getSupportedVideoSizes(), 1080, 1080);
 
             int cropWidth = bestRecordSize.height;
             int cropHeight = bestRecordSize.height / 4 * 3;
@@ -153,7 +156,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
                 // to execute "ffmpeg -version" command you just need to pass "-version"
 //                String cmd = "ffmpeg -i " + Storage.getOutputMediaFile() + " -vcodec libx264 -crf 20 " + Storage.getOutputCompressedMediaFile();
                 String cmd = "-i " + Storage.getOutputMediaFile().getAbsolutePath() +
-                        " -strict -2 -codec:v mpeg4 -b:v 512k -aspect 3:4 -vf crop=" + cropHeight + ":" + cropWidth + ":" + top + ":" + 0 + ",scale=640:480 "
+                        " -strict -2 -codec:v mpeg4 -b:v 512k -b:a 96k -aspect 3:4 -vf crop=" +
+                        cropHeight + ":" + cropWidth + ":" + top + ":" + 0 + ",scale=640:480 "
                         + Storage.getOutputCompressedMediaFile().getAbsolutePath();
                 ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
 
@@ -179,6 +183,23 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
                     @Override
                     public void onFinish() {
                         LogUtil.i("finished");
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    mDialog.dismiss();
+                                } catch (Exception e) {
+                                    LogUtil.printStackTrace(e);
+                                }
+
+                                File compressedMediaFile = Storage.getOutputCompressedMediaFile();
+                                if (compressedMediaFile.exists()) {
+                                    Intent intent = new Intent(CameraActivity.this, VideoViewActivity.class);
+                                    intent.putExtra(VideoViewActivity.KEY_PATH, compressedMediaFile.getAbsolutePath());
+                                    startActivity(intent);
+                                }
+                            }
+                        });
                     }
                 });
             } catch (FFmpegCommandAlreadyRunningException e) {
@@ -189,18 +210,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
 
         @Override
         protected void onPostExecute(Object o) {
-            try {
-                mDialog.dismiss();
-            } catch (Exception e) {
-                LogUtil.printStackTrace(e);
-            }
 
-            File compressedMediaFile = Storage.getOutputCompressedMediaFile();
-            if (compressedMediaFile.exists()) {
-                Intent intent = new Intent(CameraActivity.this, VideoViewActivity.class);
-                intent.putExtra(VideoViewActivity.KEY_PATH, compressedMediaFile.getAbsolutePath());
-                startActivity(intent);
-            }
+
             super.onPostExecute(o);
         }
     }
