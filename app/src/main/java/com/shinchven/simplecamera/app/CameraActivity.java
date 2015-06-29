@@ -1,15 +1,19 @@
 package com.shinchven.simplecamera.app;
 
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
 import android.media.MediaRecorder;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -19,6 +23,11 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+import com.github.hiteshsondhi88.libffmpeg.ExecuteBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.FFmpeg;
+import com.github.hiteshsondhi88.libffmpeg.LoadBinaryResponseHandler;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegCommandAlreadyRunningException;
+import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -96,6 +105,105 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
 
     }
 
+    public class CompressTask extends AsyncTask {
+
+        private ProgressDialog mDialog;
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            mDialog = new ProgressDialog(CameraActivity.this);
+            try {
+                mDialog.show();
+            } catch (Exception e) {
+                LogUtil.printStackTrace(e);
+            }
+        }
+
+        @Override
+        protected Object doInBackground(Object[] params) {
+            FFmpeg ffmpeg = FFmpeg.getInstance(CameraActivity.this);
+
+            try {
+                ffmpeg.loadBinary(new LoadBinaryResponseHandler() {
+                    @Override
+                    public void onFailure() {
+                        //showUnsupportedExceptionDialog();
+                    }
+                });
+            } catch (FFmpegNotSupportedException e) {
+                // showUnsupportedExceptionDialog();
+            }
+
+
+            DisplayUtil.DisplayMatrix matrix = DisplayUtil.getScreenDisplayMatrix(CameraActivity.this);
+
+            int cropWidth2 = matrix.width;
+            int cropHeight2 = matrix.width / 4 * 3;
+            int top2 = (matrix.height - cropHeight2) / 2;
+
+            Camera.Size bestRecordSize = getOptimalPreviewSize(mCamera.getParameters().getSupportedVideoSizes(), 10000, 10000);
+
+            int cropWidth = bestRecordSize.height;
+            int cropHeight = bestRecordSize.height / 4 * 3;
+            int top = (bestRecordSize.width - cropHeight) / 2;
+
+
+            try {
+                // to execute "ffmpeg -version" command you just need to pass "-version"
+//                String cmd = "ffmpeg -i " + Storage.getOutputMediaFile() + " -vcodec libx264 -crf 20 " + Storage.getOutputCompressedMediaFile();
+                String cmd = "-i " + Storage.getOutputMediaFile().getAbsolutePath() +
+                        " -strict -2 -codec:v mpeg4 -b:v 512k -aspect 3:4 -vf crop=" + cropHeight + ":" + cropWidth + ":" + top + ":" + 0 + ",scale=640:480 "
+                        + Storage.getOutputCompressedMediaFile().getAbsolutePath();
+                ffmpeg.execute(cmd, new ExecuteBinaryResponseHandler() {
+
+                    @Override
+                    public void onStart() {
+                    }
+
+                    @Override
+                    public void onProgress(String message) {
+                        LogUtil.i(message);
+                    }
+
+                    @Override
+                    public void onFailure(String message) {
+                        LogUtil.i(message);
+                    }
+
+                    @Override
+                    public void onSuccess(String message) {
+                        LogUtil.i(message);
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        LogUtil.i("finished");
+                    }
+                });
+            } catch (FFmpegCommandAlreadyRunningException e) {
+                // Handle if FFmpeg is already running
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Object o) {
+            try {
+                mDialog.dismiss();
+            } catch (Exception e) {
+                LogUtil.printStackTrace(e);
+            }
+
+            File compressedMediaFile = Storage.getOutputCompressedMediaFile();
+            if (compressedMediaFile.exists()) {
+                Intent intent = new Intent(CameraActivity.this, VideoViewActivity.class);
+                intent.putExtra(VideoViewActivity.KEY_PATH, compressedMediaFile.getAbsolutePath());
+                startActivity(intent);
+            }
+            super.onPostExecute(o);
+        }
+    }
 
     private boolean prepareVideoRecorderAndDisplay() {
         if (mCamera != null) {
@@ -124,8 +232,8 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
 //            //mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.MPEG_4_SP);
 ////            //    mMediaRecorder.setVideoSize(480,640);
 ////            // mMediaRecorder.setVideoFrameRate(10);
-             //   mMediaRecorder.setVideoEncodingBitRate(128 * 8 * 1024);
-               // mMediaRecorder.setAudioEncodingBitRate(1 * 8 * 1024);
+                //   mMediaRecorder.setVideoEncodingBitRate(128 * 8 * 1024);
+                // mMediaRecorder.setAudioEncodingBitRate(1 * 8 * 1024);
                 // mMediaRecorder.setMaxFileSize(1*1024*1024);
                 mMediaRecorder.setOrientationHint(90);
 //            mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.WEBM);
@@ -368,7 +476,32 @@ public class CameraActivity extends AppCompatActivity implements View.OnClickLis
         mHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                startActivity(new Intent(CameraActivity.this, VideoViewActivity.class));
+                AlertDialog.Builder builder = new AlertDialog.Builder(CameraActivity.this);
+                builder.setMessage("播放视频");
+                builder.setPositiveButton("源视频", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent = new Intent(CameraActivity.this, VideoViewActivity.class);
+                        intent.putExtra(VideoViewActivity.KEY_PATH, Storage.getOutputMediaFile().getAbsolutePath());
+                        startActivity(intent);
+                    }
+                });
+                builder.setNegativeButton("压缩视频", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (Storage.getOutputCompressedMediaFile().exists()) {
+                            Storage.getOutputCompressedMediaFile().delete();
+                        }
+                        new CompressTask().execute();
+                    }
+                });
+                try {
+                    builder.show();
+                } catch (Exception e) {
+                    LogUtil.printStackTrace(e);
+                }
+
+
             }
         }, 1000);
     }
